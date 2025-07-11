@@ -1,93 +1,126 @@
 const socket = io();
 
-const form = document.getElementById('form');
+const saved = localStorage.getItem('miscord-messages');
+const messages = saved ? JSON.parse(saved) : {
+  general: [],
+  memes: []
+};
+
+let currentChannel = 'general';
+
+const messageList = document.getElementById('messages');
 const input = document.getElementById('input');
-const nameInput = document.getElementById('name');
-const statusSelect = document.getElementById('status');
-const messages = document.getElementById('messages');
-const userList = document.getElementById('user-list');
+const form = document.getElementById('form');
+const typingStatus = document.getElementById('typing-status');
+const usernameInput = document.getElementById('name');
+let typingTimeout;
 
-let username = '';
-let userStatus = 'online';
+const emojiMap = {
+  ':smile:': '😄',
+  ':laugh:': '😂',
+  ':fire:': '🔥',
+  ':heart:': '❤️',
+  ':thumbsup:': '👍',
+  ':sunglasses:': '😎',
+  ':sob:': '😭',
+  ':star:': '⭐',
+  ':poop:': '💩',
+  ':skull:': '💀'
+};
 
-function sendUserInfo() {
-  username = nameInput.value.trim();
-  userStatus = statusSelect.value;
-  if (username) {
-    socket.emit('set username', { name: username, status: userStatus });
+function parseEmojis(text) {
+  for (const shortcode in emojiMap) {
+    text = text.split(shortcode).join(emojiMap[shortcode]);
   }
+  return text;
 }
 
-nameInput.addEventListener('input', sendUserInfo);
-statusSelect.addEventListener('change', sendUserInfo);
+usernameInput.value = localStorage.getItem('miscord-username') || '';
+
+usernameInput.addEventListener('input', (e) => {
+  localStorage.setItem('miscord-username', e.target.value);
+  socket.emit('set-username', e.target.value);
+});
 
 form.addEventListener('submit', (e) => {
   e.preventDefault();
-  if (input.value && username) {
-    socket.emit('chat message', input.value);
-    input.value = '';
-  }
-});
-
-socket.on('chat message', (data) => {
-  if (!data || !data.name || !data.message) return;
-
-  const colorMap = {
-    online: '#43b581',
-    idle: '#faa61a',
-    dnd: '#f04747'
-  };
-
-  const dotColor = colorMap[data.status] || '#7289da';
-
-  let time = '';
-  try {
-    time = new Date(data.timestamp).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  } catch (err) {
-    time = '??:??';
-  }
-
-  const item = document.createElement('li');
-  item.innerHTML = `
-    <span style="
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      background-color: ${dotColor};
-      border-radius: 50%;
-      margin-right: 6px;
-    "></span>
-    <strong>${data.name}</strong>
-    <span style="color: #aaa; font-size: 12px;">[${time}]</span>: ${data.message}
-  `;
-  messages.appendChild(item);
-  messages.scrollTop = messages.scrollHeight;
-});
-
-socket.on('user list', (users) => {
-  userList.innerHTML = '';
-  users.forEach(user => {
-    const colorMap = {
-      online: '#43b581',
-      idle: '#faa61a',
-      dnd: '#f04747'
+  const username = usernameInput.value || 'Anonymous';
+  const text = input.value.trim();
+  if (text !== '') {
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const message = {
+      user: username,
+      time: timestamp,
+      text: text
     };
-    const dotColor = colorMap[user.status] || '#7289da';
-
-    const li = document.createElement('li');
-    li.innerHTML = `
-      <span style="
-        display: inline-block;
-        width: 10px;
-        height: 10px;
-        background-color: ${dotColor};
-        border-radius: 50%;
-        margin-right: 8px;
-      "></span>${user.name}`;
-    userList.appendChild(li);
-  });
+    messages[currentChannel].push(message);
+    renderMessages();
+    input.value = '';
+    typingStatus.textContent = '';
+    localStorage.setItem('miscord-messages', JSON.stringify(messages));
+  }
 });
+
+function renderMessages() {
+  messageList.innerHTML = '';
+  messages[currentChannel].forEach(msg => {
+    const li = document.createElement('li');
+    li.innerHTML = `<strong>${msg.user}</strong> <span style="color: #999; font-size: 0.8em;">${msg.time}</span><br>${parseEmojis(msg.text)}`;
+    messageList.appendChild(li);
+  });
+}
+
+input.addEventListener('input', () => {
+  showTyping();
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => {
+    typingStatus.textContent = '';
+  }, 1500);
+});
+
+function showTyping() {
+  const username = usernameInput.value || 'Someone';
+  typingStatus.textContent = `${username} is typing...`;
+}
+
+socket.on('system-message', (msg) => {
+  const li = document.createElement('li');
+  li.style.color = '#aaa';
+  li.style.fontStyle = 'italic';
+  li.textContent = msg;
+  messageList.appendChild(li);
+});
+
+socket.on('user-list', (users) => {
+  const userList = document.getElementById('user-list');
+  if (userList) {
+    userList.innerHTML = '';
+    users.forEach(user => {
+      const li = document.createElement('li');
+      li.textContent = user.name;
+      userList.appendChild(li);
+    });
+  }
+});
+
+// Emoji picker
+const emojiToggle = document.getElementById('emoji-toggle');
+const emojiPanel = document.getElementById('emoji-panel');
+
+for (const shortcode in emojiMap) {
+  const span = document.createElement('span');
+  span.textContent = emojiMap[shortcode];
+  span.title = shortcode;
+  span.addEventListener('click', () => {
+    input.value += ` ${shortcode} `;
+    input.focus();
+    emojiPanel.classList.add('hidden');
+  });
+  emojiPanel.appendChild(span);
+}
+
+emojiToggle.addEventListener('click', () => {
+  emojiPanel.classList.toggle('hidden');
+});
+
+renderMessages();

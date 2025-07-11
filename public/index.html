@@ -30,9 +30,14 @@
   <div class="chat">
     <ul id="messages"></ul>
     <form id="form">
-      <input id="input" autocomplete="off" placeholder="Type a message..." />
-      <button>Send</button>
+      <div class="input-wrapper">
+        <button type="button" id="emoji-toggle">😀</button>
+        <input id="input" autocomplete="off" placeholder="Type a message..." />
+        <button>Send</button>
+      </div>
+      <div id="emoji-panel" class="hidden"></div>
     </form>
+    <div id="typing-status"></div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>

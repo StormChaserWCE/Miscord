@@ -2,35 +2,32 @@ const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
-
-app.use(express.static('public'));
+const path = require('path');
 
 const users = {};
 
+app.use(express.static(path.join(__dirname, 'public')));
+
 io.on('connection', (socket) => {
-  socket.on('set username', ({ name, status }) => {
-    users[socket.id] = { name, status };
-    io.emit('user list', Object.values(users));
-  });
+  users[socket.id] = { name: 'Anonymous' };
 
-  socket.on('chat message', (msgText) => {
-    const user = users[socket.id];
-    if (!user) return;
+  const sendUserList = () => {
+    io.emit('user-list', Object.values(users));
+  };
 
-    io.emit('chat message', {
-      name: user.name,
-      status: user.status,
-      message: msgText,
-      timestamp: Date.now()
-    });
+  socket.on('set-username', (name) => {
+    users[socket.id].name = name;
+    sendUserList();
   });
 
   socket.on('disconnect', () => {
     delete users[socket.id];
-    io.emit('user list', Object.values(users));
+    sendUserList();
   });
+
+  sendUserList();
 });
 
 http.listen(3000, () => {
-  console.log('✅ Miscord server running on http://localhost:3000');
+  console.log('Server running on http://localhost:3000');
 });
