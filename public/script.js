@@ -38,8 +38,9 @@ function parseEmojis(text) {
 usernameInput.value = localStorage.getItem('miscord-username') || '';
 
 usernameInput.addEventListener('input', (e) => {
-  localStorage.setItem('miscord-username', e.target.value);
-  socket.emit('set-username', e.target.value);
+  const name = e.target.value;
+  localStorage.setItem('miscord-username', name);
+  socket.emit('set-username', name);
 });
 
 form.addEventListener('submit', (e) => {
@@ -47,10 +48,13 @@ form.addEventListener('submit', (e) => {
   const username = usernameInput.value || 'Anonymous';
   const text = input.value.trim();
   if (text !== '') {
-    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const now = new Date();
+    const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const date = now.toISOString();
     const message = {
       user: username,
-      time: timestamp,
+      time: time,
+      date: date,
       text: text
     };
     messages[currentChannel].push(message);
@@ -64,8 +68,24 @@ form.addEventListener('submit', (e) => {
 function renderMessages() {
   messageList.innerHTML = '';
   messages[currentChannel].forEach(msg => {
+    const time = new Date(msg.date);
+    const now = new Date();
+
+    let dateLabel = '';
+    if (time.toDateString() === now.toDateString()) {
+      dateLabel = 'Today';
+    } else {
+      const yesterday = new Date();
+      yesterday.setDate(now.getDate() - 1);
+      if (time.toDateString() === yesterday.toDateString()) {
+        dateLabel = 'Yesterday';
+      } else {
+        dateLabel = time.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); // e.g. "Jul 10"
+      }
+    }
+
     const li = document.createElement('li');
-    li.innerHTML = `<strong>${msg.user}</strong> <span style="color: #999; font-size: 0.8em;">${msg.time}</span><br>${parseEmojis(msg.text)}`;
+    li.innerHTML = `<strong>${msg.user}</strong> <span style="color: #999; font-size: 0.8em;">${dateLabel} • ${time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span><br>${parseEmojis(msg.text)}`;
     messageList.appendChild(li);
   });
 }
@@ -114,7 +134,7 @@ for (const shortcode in emojiMap) {
   span.addEventListener('click', () => {
     input.value += ` ${shortcode} `;
     input.focus();
-    emojiPanel.classList.add('hidden');
+    emojiPanel.classList.add('hidden'); // hide after selection
   });
   emojiPanel.appendChild(span);
 }
