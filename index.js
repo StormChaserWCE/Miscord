@@ -9,11 +9,18 @@ const users = {};
 app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connection', (socket) => {
-  users[socket.id] = { name: 'Anonymous' };
+  users[socket.id] = { name: 'Anonymous', pfp: '' };
+
+socket.on('set-pfp', (url) => {
+  users[socket.id].pfp = url;
+  sendUserList();
+});
+
 
   const sendUserList = () => {
-    io.emit('user-list', Object.values(users));
-  };
+  io.emit('user-list', Object.values(users));
+};
+
 
   socket.on('set-username', (name) => {
     users[socket.id].name = name;

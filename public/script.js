@@ -13,6 +13,8 @@ const input = document.getElementById('input');
 const form = document.getElementById('form');
 const typingStatus = document.getElementById('typing-status');
 const usernameInput = document.getElementById('name');
+const pfpInput = document.getElementById('pfp');
+
 let typingTimeout;
 
 const emojiMap = {
@@ -35,14 +37,25 @@ function parseEmojis(text) {
   return text;
 }
 
+// Load and emit username
 usernameInput.value = localStorage.getItem('miscord-username') || '';
-
 usernameInput.addEventListener('input', (e) => {
   const name = e.target.value;
   localStorage.setItem('miscord-username', name);
   socket.emit('set-username', name);
 });
+socket.emit('set-username', usernameInput.value);
 
+// Load and emit PFP
+pfpInput.value = localStorage.getItem('miscord-pfp') || '';
+pfpInput.addEventListener('input', (e) => {
+  const pfpUrl = e.target.value;
+  localStorage.setItem('miscord-pfp', pfpUrl);
+  socket.emit('set-pfp', pfpUrl);
+});
+socket.emit('set-pfp', pfpInput.value);
+
+// Handle message sending
 form.addEventListener('submit', (e) => {
   e.preventDefault();
   const username = usernameInput.value || 'Anonymous';
@@ -92,7 +105,7 @@ function renderMessages() {
         displayTime = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       }
     } else if (msg.time) {
-      displayTime = msg.time; // legacy fallback
+      displayTime = msg.time;
       dateLabel = 'Legacy';
     }
 
@@ -129,7 +142,15 @@ socket.on('user-list', (users) => {
     userList.innerHTML = '';
     users.forEach(user => {
       const li = document.createElement('li');
-      li.textContent = user.name;
+      const img = document.createElement('img');
+      img.src = user.pfp || 'https://i.imgur.com/1XkF1Yp.png'; // default fallback avatar
+      img.alt = 'PFP';
+      img.style.width = '24px';
+      img.style.height = '24px';
+      img.style.borderRadius = '50%';
+      img.style.marginRight = '8px';
+      li.appendChild(img);
+      li.appendChild(document.createTextNode(user.name));
       userList.appendChild(li);
     });
   }
@@ -146,7 +167,7 @@ for (const shortcode in emojiMap) {
   span.addEventListener('click', () => {
     input.value += ` ${shortcode} `;
     input.focus();
-    emojiPanel.classList.add('hidden'); // hide after selection
+    emojiPanel.classList.add('hidden');
   });
   emojiPanel.appendChild(span);
 }
