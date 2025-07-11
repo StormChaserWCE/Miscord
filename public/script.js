@@ -67,25 +67,37 @@ form.addEventListener('submit', (e) => {
 
 function renderMessages() {
   messageList.innerHTML = '';
-  messages[currentChannel].forEach(msg => {
-    const time = new Date(msg.date);
-    const now = new Date();
 
-    let dateLabel = '';
-    if (time.toDateString() === now.toDateString()) {
-      dateLabel = 'Today';
-    } else {
-      const yesterday = new Date();
-      yesterday.setDate(now.getDate() - 1);
-      if (time.toDateString() === yesterday.toDateString()) {
-        dateLabel = 'Yesterday';
-      } else {
-        dateLabel = time.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); // e.g. "Jul 10"
+  messages[currentChannel].forEach(msg => {
+    let displayTime = 'Unknown time';
+    let dateLabel = 'Unknown date';
+
+    if (msg.date) {
+      const time = new Date(msg.date);
+      const now = new Date();
+
+      if (!isNaN(time.getTime())) {
+        if (time.toDateString() === now.toDateString()) {
+          dateLabel = 'Today';
+        } else {
+          const yesterday = new Date();
+          yesterday.setDate(now.getDate() - 1);
+          if (time.toDateString() === yesterday.toDateString()) {
+            dateLabel = 'Yesterday';
+          } else {
+            dateLabel = time.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+          }
+        }
+
+        displayTime = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       }
+    } else if (msg.time) {
+      displayTime = msg.time; // legacy fallback
+      dateLabel = 'Legacy';
     }
 
     const li = document.createElement('li');
-    li.innerHTML = `<strong>${msg.user}</strong> <span style="color: #999; font-size: 0.8em;">${dateLabel} • ${time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span><br>${parseEmojis(msg.text)}`;
+    li.innerHTML = `<strong>${msg.user}</strong> <span style="color: #999; font-size: 0.8em;">${dateLabel} • ${displayTime}</span><br>${parseEmojis(msg.text)}`;
     messageList.appendChild(li);
   });
 }
