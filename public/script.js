@@ -27,7 +27,8 @@ const emojiMap = {
   ':sob:': '😭',
   ':star:': '⭐',
   ':poop:': '💩',
-  ':skull:': '💀'
+  ':skull:': '💀',
+  ':rofl:': '🤣'
 };
 
 function parseEmojis(text) {
