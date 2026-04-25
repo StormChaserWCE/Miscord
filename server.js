@@ -44,7 +44,7 @@ io.on("connection", (socket) => {
 });
 
 // Render provides the PORT environment variable automatically
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 1000;
 http.listen(PORT, '0.0.0.0', () => {
     console.log(`Miscord is running on port ${PORT}`);
 });
