@@ -9,19 +9,20 @@
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #313338; color: #dbdee1; margin: 0; display: flex; height: 100vh; }
         #sidebar { width: 240px; background-color: #2b2d31; display: flex; flex-direction: column; border-right: 1px solid #1e1f22; }
         #user-list { padding: 20px; flex-grow: 1; }
-        .user-item { padding: 8px; margin-bottom: 2px; border-radius: 4px; cursor: default; }
-        .user-item:hover { background-color: #35373c; }
+        .user-item { padding: 8px; margin-bottom: 2px; border-radius: 4px; cursor: default; color: #949ba4; }
+        .user-item:hover { background-color: #35373c; color: #ffffff; }
         #chat-container { flex-grow: 1; display: flex; flex-direction: column; }
         #messages { flex-grow: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .message { background-color: #383a40; padding: 10px; border-radius: 8px; max-width: 80%; }
-        .message-info { font-size: 0.8em; color: #949ba4; margin-bottom: 4px; }
+        .message { background-color: #383a40; padding: 12px; border-radius: 8px; max-width: 80%; align-self: flex-start; }
+        .message-info { font-size: 0.8em; color: #949ba4; margin-bottom: 6px; }
         .message-user { font-weight: bold; color: #ffffff; margin-right: 8px; }
         #input-area { padding: 20px; background-color: #313338; }
         #message-input { width: 100%; padding: 12px; border-radius: 8px; border: none; background-color: #383a40; color: #dcdee1; outline: none; box-sizing: border-box; }
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #313338; display: flex; justify-content: center; align-items: center; z-index: 100; }
-        .login-box { background: #2b2d31; padding: 30px; border-radius: 8px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-        input[type="text"] { padding: 10px; border-radius: 4px; border: none; margin-bottom: 15px; width: 200px; }
-        button { padding: 10px 20px; background: #5865f2; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .login-box { background: #2b2d31; padding: 40px; border-radius: 8px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+        h2 { margin-top: 0; color: white; }
+        input[type="text"] { padding: 12px; border-radius: 4px; border: none; margin-bottom: 20px; width: 220px; background: #1e1f22; color: white; }
+        button { padding: 12px 24px; background: #5865f2; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
         button:hover { background: #4752c4; }
     </style>
 </head>
@@ -30,32 +31,33 @@
     <div id="login-overlay">
         <div class="login-box">
             <h2>Welcome to Miscord</h2>
-            <input type="text" id="username-input" placeholder="Enter Username..." maxlength="15">
+            <input type="text" id="username-input" placeholder="What's your name?" maxlength="15">
             <br>
             <button onclick="joinChat()">Join Chat</button>
         </div>
     </div>
 
     <div id="sidebar">
-        <div style="padding: 20px; font-weight: bold; border-bottom: 1px solid #1e1f22;">Online Users</div>
+        <div style="padding: 20px; font-weight: bold; color: white; border-bottom: 1px solid #1e1f22;">Online Users</div>
         <div id="user-list"></div>
     </div>
 
     <div id="chat-container">
         <div id="messages"></div>
         <div id="input-area">
-            <input type="text" id="message-input" placeholder="Message #general" onkeypress="handleKey(event)">
+            <input type="text" id="message-input" placeholder="Message #general..." onkeypress="handleKey(event)">
         </div>
     </div>
 
     <script>
-        const socket = io(); // Automatic detection for Render/HTTPS
+        const socket = io(); // Auto-detects Render's HTTPS URL
 
         function joinChat() {
             const name = document.getElementById('username-input').value;
             if (name.trim()) {
                 socket.emit('join', name);
                 document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('message-input').focus();
             }
         }
 
@@ -69,24 +71,51 @@
             }
         }
 
+        // Handle receiving messages (FIXED VERSION)
         socket.on('message', (data) => {
+            const messagesContainer = document.getElementById('messages');
+            
+            // Create main message div
             const msgDiv = document.createElement('div');
             msgDiv.className = 'message';
-            msgDiv.innerHTML = `
-                <div class="message-info">
-                    <span class="message-user">${data.user}</span>
-                    <span>${data.time}</span>
-                </div>
-                <div>${data.text}</div>
-            `;
-            const messages = document.getElementById('messages');
-            messages.appendChild(msgDiv);
-            messages.scrollTop = messages.scrollHeight;
+
+            // Create the info bar (User + Time)
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'message-info';
+            
+            const userSpan = document.createElement('span');
+            userSpan.className = 'message-user';
+            userSpan.textContent = data.user; // Safe text
+            
+            const timeSpan = document.createElement('span');
+            timeSpan.textContent = data.time; // Safe text
+            
+            infoDiv.appendChild(userSpan);
+            infoDiv.appendChild(timeSpan);
+
+            // Create the message body
+            const textDiv = document.createElement('div');
+            textDiv.textContent = data.text; // Safe text - fixes </3 bug!
+
+            // Combine and append
+            msgDiv.appendChild(infoDiv);
+            msgDiv.appendChild(textDiv);
+            messagesContainer.appendChild(msgDiv);
+
+            // Auto-scroll to bottom
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         });
 
+        // Handle user list updates
         socket.on('userList', (users) => {
             const list = document.getElementById('user-list');
-            list.innerHTML = users.map(user => `<div class="user-item">● ${user}</div>`).join('');
+            list.innerHTML = users.map(user => {
+                // We use textContent logic even in the map for safety
+                const div = document.createElement('div');
+                div.className = 'user-item';
+                div.textContent = `● ${user}`;
+                return div.outerHTML;
+            }).join('');
         });
     </script>
 </body>
